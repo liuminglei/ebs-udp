@@ -1,0 +1,168 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:p="http://www.springframework.org/schema/p" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xmlns:aop="http://www.springframework.org/schema/aop" xmlns:tx="http://www.springframework.org/schema/tx"
+	xmlns:context="http://www.springframework.org/schema/context"
+	xmlns:cache="http://www.springframework.org/schema/cache"
+	xsi:schemaLocation="http://www.springframework.org/schema/context http://www.springframework.org/schema/context/spring-context-4.1.xsd
+      http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-4.1.xsd
+      http://www.springframework.org/schema/tx http://www.springframework.org/schema/tx/spring-tx-4.1.xsd
+      http://www.springframework.org/schema/aop http://www.springframework.org/schema/aop/spring-aop-4.1.xsd
+      http://www.springframework.org/schema/cache http://www.springframework.org/schema/cache/spring-cache-4.1.xsd">
+
+	<!-- 扫描指定package下所有带有如@controller,@services,@resource,并把所注释的注册为Spring Beans,其他路径可以加,号分隔 -->
+	<context:component-scan base-package="com.ebs.dao,com.ebs.service" />
+
+	<!-- 激活annotation功能 -->
+	<context:annotation-config />
+	
+	<!-- 激活annotation功能 -->
+	<context:spring-configured />
+	
+	<!-- 启动aop切面编程注解 -->
+	<aop:aspectj-autoproxy proxy-target-class="true" />
+
+	<!-- 属性文件读入，并且放入Service，由程序读取 -->
+	<bean id="propertyConfigurer" class="org.springframework.beans.factory.config.PropertyPlaceholderConfigurer">
+		<property name="order" value="1" />
+		<property name="ignoreUnresolvablePlaceholders" value="true" />
+		<property name="locations">
+			<list>
+				<value>classpath:/prop/ebs.cfg.properties</value>
+			</list>
+		</property>
+	</bean>
+
+	<bean id="dataSource" class="com.alibaba.druid.pool.DruidDataSource" init-method="init" destroy-method="close">
+		<property name="driverClassName" value="${cfg.jdbc.driverClassName}"></property>
+		<property name="url" value="${cfg.jdbc.url}"></property>
+		<property name="username" value="${cfg.jdbc.username}"></property>
+		<property name="password" value="${cfg.jdbc.password}"></property>
+
+		<!-- Connection Pooling Info -->
+		<!-- 连接池启动时创建的初始化连接数量 -->
+		<property name="initialSize" value="20"></property>
+
+		<!-- 连接池中可同时连接的最大的连接数（默认值为8，调整为20，高峰单机器在20并发左右，自己根据应用场景定） -->
+		<property name="maxActive" value="50"></property>
+
+		<!-- 连接池中最大的空闲的连接数，超过的空闲连接将被释放，如果设置为负数表示不限制（默认为8个，maxIdle不能设置太小，因为假如在高负载的情况下，连接的打开时间比关闭的时间快，会引起连接池中idle的个数 
+			上升超过maxIdle，而造成频繁的连接销毁和创建，类似于jvm参数中的Xmx设置) -->
+		<property name="maxIdle" value="-1"></property>
+
+		<!-- 连接池中最小的空闲的连接数，低于这个数量会被创建新的连接（默认为0，调整为5，该参数越接近maxIdle，性能越好，因为连接的创建和销毁，都是需要消耗资源的；但是不能太大，因为在机器很空闲的时候，也会创建低于minidle个数的连接，类似于jvm参数中的Xmn设置） -->
+		<property name="minIdle" value="5"></property>
+
+		<!--最大等待时间，当没有可用连接时，连接池等待连接释放的最大时间，超过该时间限制会抛出异常，如果设置-1表示无限等待（默认为无限，调整为60000ms，避免因线程池不够用，而导致请求被无限制挂起） -->
+		<property name="maxWait" value="60000"></property>
+
+		<!-- 不自动提交事务 -->
+		<property name="defaultAutoCommit" value="false"></property>
+
+		<!-- 是否在自动回收超时连接的时候打印连接的超时错误 -->
+		<property name="logAbandoned" value="false"></property>
+
+		<!--超过removeAbandonedTimeout时间后，是否进 行没用连接（废弃）的回收（默认为false，调整为true) -->
+		<property name="removeAbandoned" value="true"></property>
+
+		<!--超过时间限制，回收没有用(废弃)的连接（默认为 300秒，调整为180） -->
+		<property name="removeAbandonedTimeout" value="180"></property>
+
+		<!-- Validate配置代码 -->
+
+		<!-- GenericObjectPool中针对pool管理，起了一个Evict的TimerTask定时线程进行控制(可通过设置参数timeBetweenEvictionRunsMillis>0),定时对线程池中的链接进行validateObject校验，对无效的链接进行关闭后，会调用ensureMinIdle，适当建立链接保证最小的minIdle连接数。 -->
+		<property name="testWhileIdle" value="true"></property>
+
+		<!-- 对拿到的connection进行validateObject校验 -->
+		<property name="testOnBorrow" value="false"></property>
+		<property name="testOnReturn" value="false"></property>
+
+		<!-- 代表检查的sql -->
+		<property name="validationQuery" value="select 1 from dual"></property>
+
+		<!-- 代表在执行检查时，通过statement设置，statement.setQueryTimeout(validationQueryTimeout) -->
+		<property name="validationQueryTimeout" value="1"></property>
+
+		<!-- 设置的Evict线程的时间，单位ms，大于0才会开启evict检查线程 -->
+		<property name="timeBetweenEvictionRunsMillis" value="60000"></property>
+		<property name="minEvictableIdleTimeMillis" value="300000"></property>
+
+		<!-- 代表每次检查链接的数量，建议设置和maxActive一样大，这样每次可以有效检查所有的链接. -->
+		<property name="numTestsPerEvictionRun" value="50"></property>
+
+		<!-- 打开PSCache，并且指定每个连接上PSCache的大小 -->
+		<property name="poolPreparedStatements" value="true"></property>
+		<property name="maxPoolPreparedStatementPerConnectionSize" value="20"></property>
+
+		<!-- 配置监控统计拦截的filters，去掉后监控界面sql无法统计 -->
+		<property name="filters" value="stat" />
+	</bean>
+
+	<!-- 事务管理器配置, Hibernate单数据源事务 -->
+	<bean id="transactionManager" class="org.springframework.jdbc.datasource.DataSourceTransactionManager" p:dataSource-ref="dataSource">
+	</bean>
+
+	<!-- 配置事务异常封装 -->
+	<bean id="persistenceExceptionTranslationPostProcessor" class="org.springframework.dao.annotation.PersistenceExceptionTranslationPostProcessor" />
+	
+	<!-- 定义 Autowired 自动注入 bean -->
+	<bean class="org.springframework.beans.factory.annotation.AutowiredAnnotationBeanPostProcessor" />
+	
+	<!-- 使用annotation定义事务 -->
+	<tx:annotation-driven transaction-manager="transactionManager" proxy-target-class="true" />
+	
+	<!-- 配置事务管理开始 -->
+	<bean id="transactionInterceptor" class="org.springframework.transaction.interceptor.TransactionInterceptor"
+		p:transactionManager-ref="transactionManager"
+		p:transactionAttributeSource-ref="transactionAttributeSource" />
+		
+	<bean id="transactionAttributeSource"
+		class="org.springframework.transaction.annotation.AnnotationTransactionAttributeSource">
+		<constructor-arg value="false" />
+	</bean>
+	<!-- 配置事务管理结束 -->
+	
+	<!-- 启用事务 -->
+	<tx:advice id="service" transaction-manager="transactionManager">
+		<tx:attributes>
+			<tx:method name="save*" propagation="REQUIRED" read-only="false" rollback-for="Throwable"></tx:method>
+			<tx:method name="add*" propagation="REQUIRED"  read-only="false" rollback-for="Throwable"></tx:method>
+			<tx:method name="create*" propagation="REQUIRED" read-only="false" rollback-for="Throwable"></tx:method>
+			<tx:method name="insert*" propagation="REQUIRED" read-only="false" rollback-for="Throwable"></tx:method>
+			<tx:method name="update*" propagation="REQUIRED" read-only="false" rollback-for="Throwable"></tx:method>
+			<tx:method name="modify*" propagation="REQUIRED" read-only="false" rollback-for="Throwable"></tx:method>
+			<tx:method name="delete*" propagation="REQUIRED" read-only="false" rollback-for="Throwable"></tx:method>
+			<tx:method name="remove*" propagation="REQUIRED" read-only="false" rollback-for="Throwable"></tx:method>
+			<tx:method name="execute*" propagation="REQUIRED" read-only="false" rollback-for="Throwable"></tx:method>
+			<tx:method name="exec*" propagation="REQUIRED" read-only="false" rollback-for="Throwable"></tx:method>
+
+			<!--hibernate4必须配置为开启事务 否则 getCurrentSession()获取不到 -->
+			<tx:method name="get*" read-only="true"></tx:method>
+			<tx:method name="list*" read-only="true"></tx:method>
+			<tx:method name="count*" read-only="true"></tx:method>
+			<tx:method name="find*" read-only="true"></tx:method>
+			<tx:method name="query*" read-only="true"></tx:method>
+			<tx:method name="select*" read-only="true"></tx:method>
+			<tx:method name="*" read-only="true"></tx:method>
+		</tx:attributes>
+	</tx:advice>
+	
+	<!-- 需要事务拦截的路径 -->
+	<aop:config expose-proxy="true">
+		<!-- 只对业务逻辑层实施事务 -->
+		<aop:pointcut id="txPointcut" expression="execution(* com.ebs.service..*.impl..*.*(..))"></aop:pointcut>
+		<!-- advisor定义，切入点和通知分别为txPointcut、txAdvice -->
+		<aop:advisor pointcut-ref="txPointcut" advice-ref="service"></aop:advisor>
+	</aop:config>
+
+	<!-- 日志切入 -->
+	<bean name="logAroundAdvice" class="com.ebs.common.util.log.LogAroundAdvice"></bean>
+
+	<aop:config>
+		<aop:aspect id="logAround" ref="logAroundAdvice">
+			<aop:around pointcut="execution(* com.ebs.service..*Impl.*(..))" method="invoke"></aop:around>
+		</aop:aspect>
+	</aop:config>
+</beans>
+

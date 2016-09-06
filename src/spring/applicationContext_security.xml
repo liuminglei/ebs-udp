@@ -1,0 +1,100 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans:beans xmlns="http://www.springframework.org/schema/security"
+    xmlns:beans="http://www.springframework.org/schema/beans"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.springframework.org/schema/beans 
+    http://www.springframework.org/schema/beans/spring-beans-4.1.xsd  
+    http://www.springframework.org/schema/security 
+    http://www.springframework.org/schema/security/spring-security-3.2.xsd">
+        <!-- 方法安全配置 -->
+    <global-method-security secured-annotations="enabled" />
+
+    <!-- 密码加密方式 -->
+    <beans:bean id="passwordEncoder" class="org.springframework.security.authentication.encoding.ShaPasswordEncoder">
+        <beans:property name="encodeHashAsBase64" value="true"></beans:property>
+    </beans:bean>
+    
+    <beans:bean id="sessionRegistry" class="org.springframework.security.core.session.SessionRegistryImpl"/>
+    
+    <!-- 该路径下的资源不用过滤 -->
+    <http pattern="/images/**" security="none"/>
+    <http pattern="/dwr/**" security="none"/>
+    <http pattern="/css/**" security="none"/>
+    <http pattern="/script/**" security="none"/>
+    <http pattern="/servlet/CheckCode" security="none"/>
+    <http pattern="/reportHome/**" security="none"/>
+    
+    <http use-expressions="true" auto-config="true">
+    <intercept-url pattern="/**/*.jpg" access="none" />  
+        <intercept-url pattern="/**/*.png" access="none" />  
+        <intercept-url pattern="/**/*.gif" access="none" />  
+        <intercept-url pattern="/**/*.css" access="none" />  
+        <intercept-url pattern="/**/*.js" access="none" />
+        <!-- authentication-failure-url：指定了身份验证失败时跳转到的页面。-->
+        <!-- default-target-url：指定了成功进行身份验证和授权后默认呈现给用户的页面。-->
+        <!-- always-use-default-target：指定了是否在身份验证通过后总是跳转到default-target-url属性指定的URL。-->
+        <form-login login-page="/index.jsp" 
+            authentication-failure-url="/index.jsp?type=1" 
+            always-use-default-target="true" 
+            default-target-url="/login/main.do" />
+        <!-- 退出系统的配置，退出后默认销毁session -->
+        <logout logout-success-url="/index.jsp" invalidate-session="true"/>
+        <!-- 记住我 -->
+		<remember-me />
+		<!-- 会话管理的配置 -->
+		<session-management invalid-session-url="/index.jsp" 
+			session-fixation-protection="none" >
+				<!-- 同一用户最多同时登陆的session数 -->
+				<!-- max-sessions:允许用户帐号登录的次数。范例限制用户只能登录一次。-->
+				<!-- 此值表示：用户第二次登录时，前一次的登录信息都被清空。-->
+				 <!-- error-if-maximum-exceeded:默认为false，-->
+				<!-- 当error-if-maximum-exceeded="true"时系统会拒绝第二次登录。-->
+				<concurrency-control max-sessions="10" 
+					expired-url="/index.jsp?type=6" 
+					session-registry-alias="sessionRegistry" />
+		</session-management>
+        <!-- 自定义过滤器，beforer属性 在指定过滤器之前使用 -->
+        <custom-filter ref="customRequestProcessingFilter" before="FORM_LOGIN_FILTER"/>
+        <custom-filter ref="myFilter" before="FILTER_SECURITY_INTERCEPTOR" />
+        
+    </http>
+    
+    <!-- 配置过滤器 -->
+    <beans:bean id="myFilter" class="com.ebs.common.security.MySecurityFilter">
+        <!-- 用户拥有的权限 -->
+        <beans:property name="authenticationManager" ref="myAuthenticationManager"></beans:property>
+        <!-- 用户是否拥有所请求资源的权限 -->
+        <beans:property name="accessDecisionManager" ref="myAccessDecisionManager"></beans:property>
+        <!-- 资源与权限对应关系 -->
+        <beans:property name="securityMetadataSource" ref="mySecurityMetadataSource"></beans:property>
+    </beans:bean>
+    
+    <beans:bean id="customRequestProcessingFilter" class="com.ebs.common.security.CustomRequestProcessingFilter">
+        <beans:property name="authenticationCaFaileUrl"><beans:value>/CaInfor.jsp</beans:value></beans:property>
+      <beans:property name="authenticationManager" ref="myAuthenticationManager"></beans:property>
+    </beans:bean>
+    
+    <!-- 实现了UserDetailsService的Bean -->
+    <authentication-manager alias="myAuthenticationManager" erase-credentials="false">
+        <authentication-provider ref="daoAuthenticationProvider"></authentication-provider>
+    </authentication-manager>
+    
+  <beans:bean id="daoAuthenticationProvider" class="com.ebs.common.security.DaoAuthenticationProvider">
+        <beans:property name="passwordEncoder" ref="passwordEncoder"></beans:property>
+        <beans:property name="hideUserNotFoundExceptions" value="false"></beans:property>
+        <beans:property name="userDetailsService" ref="myUserDetailServiceImpl"></beans:property>
+        <beans:property name="securityDao" ref="securityDao"></beans:property>
+    </beans:bean>
+     
+    <beans:bean id="defaultAuthEventPublisher" class="org.springframework.security.authentication.DefaultAuthenticationEventPublisher"></beans:bean>
+    <beans:bean id="myAccessDecisionManager" class="com.ebs.common.security.MyAccessDecisionManager"></beans:bean>
+    
+    <beans:bean id="mySecurityMetadataSource" class="com.ebs.common.security.MySecurityMetadataSource">
+        <beans:constructor-arg name="securityDao" ref="securityDao"></beans:constructor-arg>
+    </beans:bean>
+    
+    <beans:bean id="myUserDetailServiceImpl" class="com.ebs.common.security.MyUserDetailServiceImpl">
+        <beans:property name="securityDao" ref="securityDao"></beans:property>
+    </beans:bean>
+
+</beans:beans>
