@@ -7,7 +7,7 @@ import com.ebs.dao.entity.BaseDaoEntity;
 import com.ebs.service.iface.BaseService;
 
 /**
- * 工程： EPS 2.1</br>
+ * 工程： 智能硬件支撑平台</br>
  * 类名：BaseServiceImpl</br>
  *
  * <p>功能描述：TODO</p>
